@@ -1,7 +1,7 @@
 package executor
 
 import (
-	"github.com/MisakiOfScut/go-dage/internal/log"
+	"github.com/MisakiOfScut/go-dage/internal/utils/log"
 	"sync"
 )
 

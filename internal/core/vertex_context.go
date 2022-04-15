@@ -1,16 +1,15 @@
 package core
 
 import (
-	"github.com/MisakiOfScut/go-dage/internal/log"
 	"github.com/MisakiOfScut/go-dage/internal/script"
+	"github.com/MisakiOfScut/go-dage/internal/utils/log"
 	"go.uber.org/atomic"
 	"time"
 )
 
 type vertexContext struct {
-	id       string
-	operator *Operator
-	// isCond       bool
+	id                       string
+	operator                 *Operator
 	result                   int
 	remainingDepsNum         atomic.Uint32
 	nextVertexCtx            []*vertexContext
@@ -61,7 +60,6 @@ func (v *vertexContext) build(vertex *script.Vertex) {
 		v.nextVertexCtx = append(v.nextVertexCtx, next)
 	}
 
-	v.id = vertex.ID
 	v.depsVertexResult = vertex.DepsVertexResult
 	v.depsVertexesActualResult = make([]int, len(vertex.DepsVertexResult))
 	v.depsIdx = make(map[string]int)
@@ -72,12 +70,14 @@ func (v *vertexContext) build(vertex *script.Vertex) {
 		idx++
 	}
 
+	v.id = vertex.ID
 	v.result = script.VInit
 	v.remainingDepsNum.Store(uint32(len(v.depsVertexesActualResult)))
 }
 
 func (v *vertexContext) execute() {
 	defer v.onFinish()
+
 	// graph execute timeout
 	if v.graphContext.getEndTime() != 0 && v.graphContext.getEndTime() <= time.Now().UnixMicro() {
 		v.result = script.VAll

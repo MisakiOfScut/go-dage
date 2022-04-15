@@ -2,8 +2,8 @@ package core
 
 import (
 	"fmt"
-	"github.com/MisakiOfScut/go-dage/internal/executor"
 	"github.com/MisakiOfScut/go-dage/internal/script"
+	"github.com/MisakiOfScut/go-dage/internal/utils/executor"
 	"go.uber.org/atomic"
 	"time"
 )

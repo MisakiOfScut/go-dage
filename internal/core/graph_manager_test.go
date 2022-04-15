@@ -2,7 +2,7 @@ package core
 
 import (
 	"fmt"
-	"github.com/MisakiOfScut/go-dage/internal/executor"
+	"github.com/MisakiOfScut/go-dage/internal/utils/executor"
 	"testing"
 	"time"
 )
