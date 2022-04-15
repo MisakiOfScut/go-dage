@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/MisakiOfScut/go-dage/internal/script"
 	"sync"
 )
 
-func init(){
+func init() {
 	gob.Register(map[string]interface{}{})
 }
 
@@ -44,6 +45,7 @@ func (m *defaultDagParams) GetParams() (map[string]interface{}, error) {
 	}
 	return copyMap, nil
 }
+
 func (m *defaultDagParams) GetParamByName(name string) (interface{}, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
@@ -52,12 +54,14 @@ func (m *defaultDagParams) GetParamByName(name string) (interface{}, error) {
 	}
 	return nil, fmt.Errorf("can't find %s", name)
 }
+
 func (m *defaultDagParams) SetParams(name string, value interface{}) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.params[name] = value
 	return nil
 }
+
 func (m *defaultDagParams) Clear() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -88,7 +92,16 @@ type defaultOperatorManager struct {
 }
 
 func NewDefaultOperatorManager() *defaultOperatorManager {
-	return &defaultOperatorManager{operators: make(map[string]*Operator)}
+	oprMgr := &defaultOperatorManager{operators: make(map[string]*Operator)}
+	oprMgr.addPredefinedOpr()
+	return oprMgr
+}
+
+func (m *defaultOperatorManager) addPredefinedOpr() {
+	m.RegisterOperator(script.DAGE_EXPR_OPERATOR, &Operator{
+		Name:      script.DAGE_EXPR_OPERATOR,
+		Processor: &DAGEExpressionProcessor{},
+	})
 }
 
 // RegisterOperator add an operator object to opr manager.
@@ -104,9 +117,9 @@ func (m *defaultOperatorManager) GetOperator(oprName string) *Operator {
 	return nil
 }
 
-// type DAGEExpressionProcessor struct {
-// }
-//
-// func (p *DAGEExpressionProcessor) OnExecute(ctx Context) error {
-//
-// }
+type DAGEExpressionProcessor struct {
+}
+
+func (p *DAGEExpressionProcessor) OnExecute(ctx *dagContext) error {
+	return nil
+}
