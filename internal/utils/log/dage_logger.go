@@ -7,7 +7,7 @@ import "go.uber.org/zap"
 // 	e.x.
 // 		logger := zap.NewExample()
 // 		defer logger.Sync()
-// 		zap.ReplaceGlobals(logger)
+// 		log.SetLogger(logger.Sugar())
 //
 var l Logger = zap.S()
 
