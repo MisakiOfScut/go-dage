@@ -2,6 +2,7 @@ package script
 
 import (
 	"fmt"
+	"github.com/MisakiOfScut/go-dage/internal/utils/eval"
 )
 
 const (
@@ -31,6 +32,7 @@ type Vertex struct {
 
 	NextVertex       map[string]*Vertex
 	DepsVertexResult map[string]int
+	Eval             eval.EvaluableExpression
 	g                *Graph
 }
 
@@ -56,8 +58,15 @@ func (v *Vertex) verifyAndSetUp() error {
 		if len(v.ID) == 0 {
 			return fmt.Errorf("[graph:%s] has a anonymous condition vertex, which must have an ID", v.g.Name)
 		}
+
+		// try to get an eval expr from user condition expr
+		expression, err := eval.NewEvaluableExpression(v.Cond)
+		if err != nil {
+			return fmt.Errorf("[graph:%s, vertex id:%s] cond:%s parsed failed with err:%v", v.g.Name,
+				v.ID, v.Cond, err)
+		}
+		v.Eval = expression
 		v.Operator = DAGE_EXPR_OPERATOR
-		return nil
 	}
 
 	// normal vertex

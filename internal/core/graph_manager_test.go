@@ -3,9 +3,17 @@ package core
 import (
 	"fmt"
 	"github.com/MisakiOfScut/go-dage/internal/utils/executor"
+	"github.com/MisakiOfScut/go-dage/internal/utils/log"
+	"go.uber.org/zap"
 	"testing"
 	"time"
 )
+
+func init() {
+	logger := zap.NewExample()
+	defer logger.Sync()
+	log.SetLogger(logger.Sugar())
+}
 
 func TestCreateGraphMgr(t *testing.T) {
 	NewGraphManager(executor.NewDefaultExecutor(32, 8), NewDefaultOperatorManager())
@@ -36,6 +44,19 @@ var tomlScript0 = `
 
 	[[graph.vertex]]
 	op = "opr4"
+	next = ["cond1"]
+
+	[[graph.vertex]]
+	id = "cond1"
+	cond = "opr3 > opr2"
+	next_on_ok = ["opr5"]
+	next_on_fail = ["opr6"]
+	
+	[[graph.vertex]]
+	op = "opr5"
+
+	[[graph.vertex]]
+	op = "opr6"
 `
 
 func TestGraphManager_Build(t *testing.T) {
@@ -53,5 +74,5 @@ func TestGraphManager_Execute(t *testing.T) {
 		fmt.Println(err)
 		t.Fail()
 	}
-	time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Millisecond)
 }

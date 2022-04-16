@@ -53,7 +53,7 @@ func (gc *graphClusterContext) build(cluster *script.GraphCluster) {
 	}
 }
 
-func (gc *graphClusterContext) execute(context *dagContext, graphName string, timeoutMillisecond int64) error {
+func (gc *graphClusterContext) execute(context *DAGContext, graphName string, timeoutMillisecond int64) error {
 	if _, ok := gc.graphCtxMap[graphName]; !ok {
 		return fmt.Errorf("graph %s is not existed", graphName)
 	}
@@ -78,7 +78,7 @@ type graphContext struct {
 	vertexCtxMap      map[string]*vertexContext
 
 	// runtime assign
-	context *dagContext
+	context *DAGContext
 
 	graphClusterCtx *graphClusterContext
 }
@@ -114,7 +114,7 @@ func (g *graphContext) build(graph *script.Graph) {
 	g.name = graph.Name
 }
 
-func (g *graphContext) execute(context *dagContext) {
+func (g *graphContext) execute(context *DAGContext) {
 	g.context = context
 	var readyVertex []*vertexContext
 	for _, vertexCtx := range g.vertexCtxMap {

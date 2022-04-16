@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/MisakiOfScut/go-dage/internal/script"
+	"github.com/MisakiOfScut/go-dage/internal/utils/eval"
 	"sync"
 )
 
@@ -13,6 +14,7 @@ func init() {
 }
 
 type dagParams interface {
+	DoEval(expression eval.EvaluableExpression) (interface{}, error)
 	GetParams() (map[string]interface{}, error)
 	GetParamByName(name string) (interface{}, error)
 	SetParams(name string, value interface{}) error
@@ -26,6 +28,12 @@ type defaultDagParams struct {
 
 func newDagParams() *defaultDagParams {
 	return &defaultDagParams{params: make(map[string]interface{}), lock: sync.RWMutex{}}
+}
+
+func (m *defaultDagParams) DoEval(expression eval.EvaluableExpression) (interface{}, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	return expression.Evaluate(m.params)
 }
 
 func (m *defaultDagParams) GetParams() (map[string]interface{}, error) {
@@ -68,13 +76,13 @@ func (m *defaultDagParams) Clear() {
 	m.params = make(map[string]interface{})
 }
 
-type dagContext struct {
+type DAGContext struct {
 	dagParams
-	userData interface{}
+	UserData interface{}
 }
 
 type Processor interface {
-	OnExecute(ctx *dagContext) error
+	OnExecute(ctx *DAGContext) error
 }
 
 type Operator struct {
@@ -120,6 +128,6 @@ func (m *defaultOperatorManager) GetOperator(oprName string) *Operator {
 type DAGEExpressionProcessor struct {
 }
 
-func (p *DAGEExpressionProcessor) OnExecute(ctx *dagContext) error {
+func (p *DAGEExpressionProcessor) OnExecute(ctx *DAGContext) error {
 	return nil
 }

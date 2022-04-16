@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/MisakiOfScut/go-dage/internal/script"
+	"github.com/MisakiOfScut/go-dage/internal/utils/eval"
 	"github.com/MisakiOfScut/go-dage/internal/utils/log"
 	"go.uber.org/atomic"
 	"time"
@@ -12,6 +13,7 @@ type vertexContext struct {
 	operator                 *Operator
 	result                   int
 	remainingDepsNum         atomic.Uint32
+	eval                     eval.EvaluableExpression
 	nextVertexCtx            []*vertexContext
 	depsVertexResult         map[string]int // expected result
 	depsVertexesActualResult []int          // store actual result
@@ -71,6 +73,7 @@ func (v *vertexContext) build(vertex *script.Vertex) {
 	}
 
 	v.id = vertex.ID
+	v.eval = vertex.Eval
 	v.result = script.VInit
 	v.remainingDepsNum.Store(uint32(len(v.depsVertexesActualResult)))
 }
@@ -94,6 +97,32 @@ func (v *vertexContext) execute() {
 		}
 	}
 
+	if v.eval != nil {
+		v.executeCondProcessor()
+	} else {
+		v.executeUserProcessor()
+	}
+}
+
+func (v *vertexContext) executeCondProcessor() {
+	v.result = script.VFail
+	result, err := v.graphContext.context.DoEval(v.eval)
+	if err != nil {
+		log.Errorf("vertex:%s, evaluate cond:%s failed with err:%v", v.id, v.eval.String(), err)
+		return
+	}
+	r, ok := result.(bool)
+	if !ok {
+		log.Errorf("vertex:%s, cond:%s is not a bool expression (its result type isn't bool)", v.id, v.eval.String())
+		return
+	}
+
+	if r {
+		v.result = script.VOk
+	}
+}
+
+func (v *vertexContext) executeUserProcessor() {
 	if err := v.operator.Processor.OnExecute(v.graphContext.context); err != nil {
 		v.result = script.VFail
 		log.Debugf("vertex:%s, with operator:%s, execution return err:%v", v.id, v.operator.Name, err)

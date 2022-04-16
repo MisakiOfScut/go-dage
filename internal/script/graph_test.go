@@ -30,6 +30,7 @@ var testScript1 string = `
 
 type mockGraphManager struct {
 }
+
 func (p *mockGraphManager) IsOprExisted(string2 string) bool {
 	return true
 }
@@ -56,7 +57,8 @@ func TestBuild(t *testing.T) {
 	fmt.Printf("%+v\n", *gc)
 }
 
-var testIsolatedVertex string = `
+func TestIsolatedVertex(t *testing.T) {
+	var testIsolatedVertex = `
 [[graph]]
 name = "test_graph_0"
 
@@ -67,8 +69,6 @@ start = true
 [[graph.vertex]]
 op = "op2"
 `
-
-func TestIsolatedVertex(t *testing.T) {
 	gc := NewGraphCluster(&mockGraphManager{})
 	if _, err := toml.Decode(testIsolatedVertex, gc); err != nil {
 		t.Log(err)
@@ -81,7 +81,8 @@ func TestIsolatedVertex(t *testing.T) {
 	}
 }
 
-var testCircleScript string = `
+func TestCircleCheck(t *testing.T) {
+	var testCircleScript = `
 [[graph]]
 name = "test_circle"
 
@@ -106,8 +107,6 @@ next = ["opr4"]
 op = "opr4"
 next = ["opr1"]
 `
-
-func TestCircleCheck(t *testing.T) {
 	gc := NewGraphCluster(&mockGraphManager{})
 	if _, err := toml.Decode(testCircleScript, gc); err != nil {
 		t.Log(err)
@@ -116,6 +115,27 @@ func TestCircleCheck(t *testing.T) {
 	if err := gc.Build(); err != nil {
 		t.Log(err)
 	} else {
+		t.Fail()
+	}
+}
+
+func TestCondExprParse(t *testing.T) {
+	validCond := `
+	[[graph]]
+	name = "test_cond_parse"
+
+	[[graph.vertex]]
+	id = "1"
+	cond = "(a * b)/c + d >= 100.00758"
+	start = true
+`
+	gc := NewGraphCluster(&mockGraphManager{})
+	if _, err := toml.Decode(validCond, gc); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if err := gc.Build(); err != nil {
+		t.Log(err)
 		t.Fail()
 	}
 }
