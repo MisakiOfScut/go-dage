@@ -2,11 +2,13 @@ package script
 
 import (
 	"fmt"
+	"strings"
 )
 
 type GraphCluster struct {
 	Graph []Graph `toml:"graph"`
 
+	isBuild  bool
 	graphMgr IGraphManager
 	graphMap map[string]*Graph
 }
@@ -16,7 +18,7 @@ type IGraphManager interface {
 }
 
 func NewGraphCluster(gMgr IGraphManager) *GraphCluster {
-	return &GraphCluster{graphMgr: gMgr, graphMap: make(map[string]*Graph)}
+	return &GraphCluster{graphMgr: gMgr, isBuild: false, graphMap: make(map[string]*Graph)}
 }
 
 func (gc *GraphCluster) Build() error {
@@ -35,7 +37,25 @@ func (gc *GraphCluster) Build() error {
 			return err
 		}
 	}
+	gc.isBuild = true
 	return nil
+}
+
+func (gc *GraphCluster) IsBuild() bool {
+	return gc.isBuild
+}
+
+func (gc *GraphCluster) DumpGraphClusterDot(sb *strings.Builder) {
+	if gc.isBuild == false {
+		sb.WriteString(fmt.Sprintf("graphCluster is not built yet"))
+		return
+	}
+
+	sb.WriteString("digraph G {\nrankdir=LR;\n")
+	for _, graph := range gc.graphMap {
+		graph.dumpDot(sb)
+	}
+	sb.WriteString("}\n")
 }
 
 func (gc *GraphCluster) GetGraphByName(name string) *Graph {
@@ -84,6 +104,24 @@ func (g *Graph) build() error {
 	return nil
 }
 
+func (g *Graph) dumpDot(sb *strings.Builder) {
+	sb.WriteString(fmt.Sprintf("subgraph cluster_%s {\n", g.Name))
+	sb.WriteString("style = rounded;\n")
+	sb.WriteString(fmt.Sprintf("label = \"%s\";\n", g.Name))
+	sb.WriteString(g.Name + "__START__[color=black fillcolor=deepskyblue style=filled shape=Msquare" +
+		" label=\"START\"];\n")
+	sb.WriteString(g.Name + "__STOP__[color=black fillcolor=deepskyblue style=filled shape=Msquare" +
+		" label=\"STOP\"];\n")
+	for _, vertex := range g.vertexMap {
+		vertex.dumpNodeDot(sb)
+	}
+	sb.WriteString("\n")
+	for _, vertex := range g.vertexMap {
+		vertex.dumpEdgeDot(sb)
+	}
+	sb.WriteString("};\n")
+}
+
 // check graph legality
 func (g *Graph) verifyAfterBuild() error {
 	for _, v := range g.vertexMap {
@@ -116,7 +154,7 @@ func DFS(v *Vertex, visited map[string]bool) bool {
 
 	for _, next := range v.NextVertex {
 		visitedCp := make(map[string]bool)
-		for k,v := range visited{
+		for k, v := range visited {
 			visitedCp[k] = v
 		}
 		if DFS(next, visitedCp) == true {

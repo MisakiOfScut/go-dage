@@ -6,6 +6,7 @@ import (
 	"github.com/MisakiOfScut/go-dage/internal/script"
 	"github.com/MisakiOfScut/go-dage/internal/utils/executor"
 	"github.com/MisakiOfScut/go-dage/internal/utils/log"
+	"strings"
 	"sync"
 )
 
@@ -96,4 +97,26 @@ func (m *GraphManager) Build(dagName string, tomlScript *string) error {
 
 func (m *GraphManager) Stop() {
 	m.executor.Stop()
+}
+
+func (m *GraphManager) DumpDAGDot(graphClusterName string) string {
+	g := m.getDagGraph(graphClusterName)
+	if g == nil {
+		return fmt.Sprintf("graphCluster:%s is not existed", graphClusterName)
+	}
+	sb := strings.Builder{}
+	g.graphClusters.DumpGraphClusterDot(&sb)
+	return sb.String()
+}
+
+func (m *GraphManager) DevelopmentBuild(tomlScript *string) error {
+	graphCluster := script.NewGraphCluster(m)
+	if _, err := toml.Decode(*tomlScript, graphCluster); err != nil {
+		return err
+	}
+	if err := graphCluster.Build(); err != nil {
+		return err
+	}
+
+	return nil
 }

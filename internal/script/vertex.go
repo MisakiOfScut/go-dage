@@ -3,6 +3,7 @@ package script
 import (
 	"fmt"
 	"github.com/MisakiOfScut/go-dage/internal/utils/eval"
+	"strings"
 )
 
 const (
@@ -163,4 +164,47 @@ func (v *Vertex) verifyAfterBuild() error {
 			v.ID)
 	}
 	return nil
+}
+
+// e.x.
+// sub_graph2_opr1 [label="opr1" color=black fillcolor=linen style=filled];
+// sub_graph2_test_34old [label="user_type==\"34old\"" shape=diamond color=black fillcolor=aquamarine style=filled];
+func (v *Vertex) dumpNodeDot(sb *strings.Builder) {
+	sb.WriteString(fmt.Sprintf("%s [", v.getDotID()))
+	if len(v.Cond) > 0 {
+		sb.WriteString(fmt.Sprintf("label=\"%s\" shape=diamond color=black fillcolor=aquamarine style=filled",
+			strings.ReplaceAll(v.Cond, "\"", "\\\"")))
+	} else {
+		sb.WriteString(fmt.Sprintf("label=\"%s\" color=black fillcolor=linen style=filled", v.ID))
+	}
+	sb.WriteString("];\n")
+}
+
+func (v *Vertex) dumpEdgeDot(sb *strings.Builder) {
+	if len(v.DepsVertexResult) == 0 {
+		// sub_graph2__START__ -> sub_graph2_opr0;
+		sb.WriteString(fmt.Sprintf("%s__START__ -> %s;\n", v.g.Name, v.getDotID()))
+	}
+	if len(v.NextVertex) == 0 {
+		// sub_graph2_opr3 -> sub_graph2__STOP__;
+		sb.WriteString(fmt.Sprintf("%s -> %s__STOP__;\n", v.getDotID(), v.g.Name))
+	}
+	for preID, expected := range v.DepsVertexResult {
+		sb.WriteString(fmt.Sprintf("%s -> %s ", v.g.GetVertexByID(preID).getDotID(), v.getDotID()))
+		switch expected {
+		case VOk:
+			// sub_graph2_test_34old -> sub_graph2_opr3 [style=dashed label="ok"];
+			sb.WriteString("[style=dashed label=\"ok\"];\n")
+		case VFail:
+			// sub_graph2_test_34old -> sub_graph2_opr4 [style=dashed color=red label="fail"];
+			sb.WriteString("[style=dashed color=red label=\"fail\"];\n")
+		default:
+			// sub_graph2_opr0 -> sub_graph2_test_34old [style=bold label="all"];
+			sb.WriteString("[style=bold label=\"all\"];\n")
+		}
+	}
+}
+
+func (v *Vertex) getDotID() string {
+	return v.g.Name + "_" + v.ID
 }

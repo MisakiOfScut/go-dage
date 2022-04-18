@@ -1,8 +1,8 @@
 package script
 
 import (
-	"fmt"
 	"github.com/BurntSushi/toml"
+	"strings"
 	"testing"
 )
 
@@ -26,6 +26,19 @@ var testScript1 string = `
 
 	[[graph.vertex]]
 	op = "opr4"
+	next = ["cond1"]
+
+	[[graph.vertex]]
+	id = "cond1"
+	cond = "opr3 > opr2"
+	next_on_ok = ["opr5"]
+	next_on_fail = ["opr6"]
+	
+	[[graph.vertex]]
+	op = "opr5"
+
+	[[graph.vertex]]
+	op = "opr6"
 `
 
 type mockGraphManager struct {
@@ -41,7 +54,7 @@ func TestDecode(t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	fmt.Printf("%+v\n", *gc)
+	t.Logf("%+v\n", *gc)
 }
 
 func TestBuild(t *testing.T) {
@@ -54,7 +67,22 @@ func TestBuild(t *testing.T) {
 		t.Log(err)
 		t.Fail()
 	}
-	fmt.Printf("%+v\n", *gc)
+	t.Logf("%+v\n", *gc)
+}
+
+func TestGraphCluster_DumpGraphClusterDot(t *testing.T) {
+	gc := NewGraphCluster(&mockGraphManager{})
+	if _, err := toml.Decode(testScript1, gc); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if err := gc.Build(); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	sb := strings.Builder{}
+	gc.DumpGraphClusterDot(&sb)
+	t.Log(sb.String())
 }
 
 func TestIsolatedVertex(t *testing.T) {
