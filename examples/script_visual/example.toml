@@ -1,0 +1,32 @@
+[[graph]]
+name = "test_graph_0"
+
+[[graph.vertex]]
+op = "opr1"
+start = true
+
+[[graph.vertex]]
+op = "opr2"
+deps = ["opr1"]
+next = ["opr4"]
+
+[[graph.vertex]]
+op = "opr3"
+deps = ["opr1"]
+next = ["opr4"]
+
+[[graph.vertex]]
+op = "opr4"
+next = ["cond1"]
+
+[[graph.vertex]]
+id = "cond1"
+cond = "opr3 > opr2"
+next_on_ok = ["opr5"]
+next_on_fail = ["opr6"]
+
+[[graph.vertex]]
+op = "opr5"
+
+[[graph.vertex]]
+op = "opr6"
