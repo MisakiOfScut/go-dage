@@ -109,14 +109,7 @@ func (m *GraphManager) DumpDAGDot(graphClusterName string) string {
 	return sb.String()
 }
 
-func (m *GraphManager) DevelopmentBuild(tomlScript *string) error {
-	graphCluster := script.NewGraphCluster(m)
-	if _, err := toml.Decode(*tomlScript, graphCluster); err != nil {
-		return err
-	}
-	if err := graphCluster.Build(); err != nil {
-		return err
-	}
-
-	return nil
+func (m *GraphManager)ReplaceExecutor(executor2 executor.Executor){
+	m.executor.Stop()
+	m.executor = executor2
 }
