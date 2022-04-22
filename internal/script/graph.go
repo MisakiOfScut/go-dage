@@ -74,12 +74,16 @@ type Graph struct {
 	Vertex []Vertex `toml:"vertex"`
 
 	cluster   *GraphCluster
-	vertexMap map[string]*Vertex
+	vertexMap map[string]*Vertex // map vertex id to *Vertex
+	dataMap   map[string]*Vertex // map data id to *Vertex
 }
 
 func (g *Graph) build() error {
 	if g.vertexMap == nil {
 		g.vertexMap = make(map[string]*Vertex)
+	}
+	if g.dataMap == nil {
+		g.dataMap = make(map[string]*Vertex)
 	}
 
 	for i := 0; i < len(g.Vertex); i++ {
@@ -94,6 +98,10 @@ func (g *Graph) build() error {
 		g.vertexMap[v.ID] = v
 	}
 
+	if err := g.buildInputOutput(); err != nil {
+		return err
+	}
+
 	// build vertexes' dependency
 	for _, v := range g.vertexMap {
 		if err := v.build(); err != nil {
@@ -101,6 +109,28 @@ func (g *Graph) build() error {
 		}
 	}
 
+	return nil
+}
+
+func (g *Graph) buildInputOutput() error {
+	for _, v := range g.vertexMap {
+		for i, _ := range v.Output {
+			if t := g.getVertexByDataId(v.Output[i]); t != nil {
+				return fmt.Errorf("[graph:%s] vertex:%s and vertex:%s have a duplicated data:%s in output", v.g.Name,
+					v.ID,
+					t.ID, v.Output[i])
+			}
+			g.dataMap[v.Output[i]] = v
+		}
+	}
+
+	return nil
+}
+
+func (g *Graph) getVertexByDataId(dataId string) *Vertex {
+	if val, existed := g.dataMap[dataId]; existed {
+		return val
+	}
 	return nil
 }
 

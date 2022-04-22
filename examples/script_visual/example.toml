@@ -30,3 +30,39 @@ op = "opr5"
 
 [[graph.vertex]]
 op = "opr6"
+
+
+[[graph]]
+name = "test_graph_1"
+
+[[graph.vertex]]
+op = "opr1"
+start = true
+output = ["opr1_out"]
+
+[[graph.vertex]]
+op = "opr2"
+input = ["opr1_out"]
+output = ["opr2_out"]
+
+[[graph.vertex]]
+op = "opr3"
+input = ["opr1_out"]
+output = ["opr3_out"]
+
+[[graph.vertex]]
+op = "opr4"
+input = ["opr2_out", "opr3_out"]
+
+[[graph.vertex]]
+id = "cond1"
+cond = "opr3 > opr2"
+deps = ["opr4"]
+next_on_ok = ["opr5"]
+next_on_fail = ["opr6"]
+
+[[graph.vertex]]
+op = "opr5"
+
+[[graph.vertex]]
+op = "opr6"

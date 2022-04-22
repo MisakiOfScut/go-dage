@@ -6,39 +6,39 @@ import (
 	"testing"
 )
 
-var testScript1 string = `
-	[[graph]]
-	name = "test_graph_0"
+var testScriptOfProcessDriven string = `
+[[graph]]
+name = "test_graph_0"
 
-	[[graph.vertex]]
-	op = "opr1"
-	start = true
+[[graph.vertex]]
+op = "opr1"
+start = true
 
-	[[graph.vertex]]
-	op = "opr2"
-	deps = ["opr1"]
-	next = ["opr4"]
+[[graph.vertex]]
+op = "opr2"
+deps = ["opr1"]
+next = ["opr4"]
 
-	[[graph.vertex]]
-	op = "opr3"
-	deps = ["opr1"]
-	next = ["opr4"]
+[[graph.vertex]]
+op = "opr3"
+deps = ["opr1"]
+next = ["opr4"]
 
-	[[graph.vertex]]
-	op = "opr4"
-	next = ["cond1"]
+[[graph.vertex]]
+op = "opr4"
+next = ["cond1"]
 
-	[[graph.vertex]]
-	id = "cond1"
-	cond = "opr3 > opr2"
-	next_on_ok = ["opr5"]
-	next_on_fail = ["opr6"]
-	
-	[[graph.vertex]]
-	op = "opr5"
+[[graph.vertex]]
+id = "cond1"
+cond = "opr3 > opr2"
+next_on_ok = ["opr5"]
+next_on_fail = ["opr6"]
 
-	[[graph.vertex]]
-	op = "opr6"
+[[graph.vertex]]
+op = "opr5"
+
+[[graph.vertex]]
+op = "opr6"
 `
 
 type mockGraphManager struct {
@@ -48,18 +48,18 @@ func (p *mockGraphManager) IsOprExisted(string2 string) bool {
 	return true
 }
 
-func TestDecode(t *testing.T) {
+func TestDecodeScriptOfProcessDriven(t *testing.T) {
 	gc := NewGraphCluster(&mockGraphManager{})
-	if _, err := toml.Decode(testScript1, gc); err != nil {
+	if _, err := toml.Decode(testScriptOfProcessDriven, gc); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
 	t.Logf("%+v\n", *gc)
 }
 
-func TestBuild(t *testing.T) {
+func TestBuildScriptOfProcessDriven(t *testing.T) {
 	gc := NewGraphCluster(&mockGraphManager{})
-	if _, err := toml.Decode(testScript1, gc); err != nil {
+	if _, err := toml.Decode(testScriptOfProcessDriven, gc); err != nil {
 		t.Log(err)
 		t.Fail()
 	}
@@ -70,9 +70,71 @@ func TestBuild(t *testing.T) {
 	t.Logf("%+v\n", *gc)
 }
 
+var testScriptOfDataDriven = `
+[[graph]]
+name = "test_graph_1"
+
+[[graph.vertex]]
+op = "opr1"
+start = true
+output = ["opr1_out"]
+
+[[graph.vertex]]
+op = "opr2"
+input = ["opr1_out"]
+output = ["opr2_out"]
+
+[[graph.vertex]]
+op = "opr3"
+input = ["opr1_out"]
+output = ["opr3_out"]
+
+[[graph.vertex]]
+op = "opr4"
+input = ["opr2_out", "opr3_out"]
+
+[[graph.vertex]]
+id = "cond1"
+cond = "opr3 > opr2"
+deps = ["opr4"]
+next_on_ok = ["opr5"]
+next_on_fail = ["opr6"]
+
+[[graph.vertex]]
+op = "opr5"
+
+[[graph.vertex]]
+op = "opr6"
+`
+
+func TestDecodeScriptOfDataDriven(t *testing.T) {
+	gc := NewGraphCluster(&mockGraphManager{})
+	if _, err := toml.Decode(testScriptOfDataDriven, gc); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	// t.Logf("%+v\n", *gc)
+}
+
+func TestBuildScriptOfDataDriven(t *testing.T) {
+	gc := NewGraphCluster(&mockGraphManager{})
+	if _, err := toml.Decode(testScriptOfDataDriven, gc); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+	if err := gc.Build(); err != nil {
+		t.Log(err)
+		t.Fail()
+	}
+
+	sb := strings.Builder{}
+	gc.DumpGraphClusterDot(&sb)
+	t.Log(sb)
+}
+
 func TestGraphCluster_DumpGraphClusterDot(t *testing.T) {
 	gc := NewGraphCluster(&mockGraphManager{})
-	if _, err := toml.Decode(testScript1, gc); err != nil {
+	if _, err := toml.Decode(testScriptOfProcessDriven, gc); err != nil {
 		t.Log(err)
 		t.Fail()
 	}

@@ -31,6 +31,9 @@ type Vertex struct {
 	DepsOnOk   []string `toml:"deps_on_ok"`
 	DepsOnFail []string `toml:"deps_on_fail"`
 
+	Input  []string `toml:"input"`
+	Output []string `toml:"output"`
+
 	NextVertex       map[string]*Vertex
 	DepsVertexResult map[string]int
 	Eval             eval.EvaluableExpression
@@ -96,6 +99,18 @@ func (v *Vertex) depend(pre *Vertex, expectedResult int) {
 }
 
 func (v *Vertex) build() error {
+	// build vertex's dependencies from data dependencies
+	for i, _ := range v.Input {
+		preVertex := v.g.getVertexByDataId(v.Input[i])
+		if preVertex == nil {
+			return fmt.Errorf("[graph:%s, vertex id:%s] can't find vertex input:%s from other vertexes output",
+				v.g.Name,
+				v.ID, v.Input[i])
+		}
+		v.depend(preVertex, VOk)
+	}
+
+	// build vertex's dependencies from process dependencies
 	for _, nextVertexID := range v.Next {
 		if nextVertex := v.g.GetVertexByID(nextVertexID); nextVertex != nil {
 			nextVertex.depend(v, VAll)
