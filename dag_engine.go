@@ -66,9 +66,8 @@ func ReplaceExecutor(executor executor.Executor) {
 	_globalE.ReplaceExecutor(executor)
 }
 
-// RegisterOperator add an operator object to engine.
-// Attention: 1. add an opr with duplicated name will replace the previous one; 2.
-// the operator object will be shared with every dag execution;
-func RegisterOperator(oprName string, operator *core.Operator) {
-	_globalOprMgr.RegisterOperator(oprName, operator)
+// RegisterOperator add an operator object new function to engine.
+// Attention: add a function with duplicated name will replace the previous one;
+func RegisterOperator(oprName string, fun core.NewOperatorFunction) {
+	_globalOprMgr.RegisterOperator(oprName, fun)
 }

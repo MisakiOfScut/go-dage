@@ -81,53 +81,55 @@ type DAGContext struct {
 	UserData interface{}
 }
 
-type Processor interface {
+type Operator interface {
+	Name() string
 	OnExecute(ctx *DAGContext) error
 }
 
-type Operator struct {
-	Name      string
-	Processor Processor
-}
+type NewOperatorFunction func() Operator
 
 type OperatorManager interface {
-	RegisterOperator(id string, operator *Operator)
-	GetOperator(id string) *Operator
+	RegisterOperator(id string, f NewOperatorFunction)
+	GetOperator(id string) Operator
 }
 
 type defaultOperatorManager struct {
-	operators map[string]*Operator
+	operators map[string]NewOperatorFunction
 }
 
 func NewDefaultOperatorManager() *defaultOperatorManager {
-	oprMgr := &defaultOperatorManager{operators: make(map[string]*Operator)}
+	oprMgr := &defaultOperatorManager{operators: make(map[string]NewOperatorFunction)}
 	oprMgr.addPredefinedOpr()
 	return oprMgr
 }
 
 func (m *defaultOperatorManager) addPredefinedOpr() {
-	m.RegisterOperator(script.DAGE_EXPR_OPERATOR, &Operator{
-		Name:      script.DAGE_EXPR_OPERATOR,
-		Processor: &DAGEExpressionProcessor{},
+	m.RegisterOperator(script.DAGE_EXPR_OPERATOR, func() Operator {
+		o := new(DAGEExpressionOperator)
+		return o
 	})
 }
 
-// RegisterOperator add an operator object to opr manager.
-// Attention: add an opr with duplicated name will replace the previous one.
-func (m *defaultOperatorManager) RegisterOperator(oprName string, operator *Operator) {
-	m.operators[oprName] = operator
+// RegisterOperator add an operator object create function to opr manager.
+// Attention: add a func with duplicated name will replace the previous one.
+func (m *defaultOperatorManager) RegisterOperator(oprName string, f NewOperatorFunction) {
+	m.operators[oprName] = f
 }
 
-func (m *defaultOperatorManager) GetOperator(oprName string) *Operator {
+func (m *defaultOperatorManager) GetOperator(oprName string) Operator {
 	if v, ok := m.operators[oprName]; ok {
-		return v
+		return v()
 	}
 	return nil
 }
 
-type DAGEExpressionProcessor struct {
+type DAGEExpressionOperator struct {
 }
 
-func (p *DAGEExpressionProcessor) OnExecute(ctx *DAGContext) error {
+func (p *DAGEExpressionOperator) Name() string {
+	return script.DAGE_EXPR_OPERATOR
+}
+
+func (p *DAGEExpressionOperator) OnExecute(ctx *DAGContext) error {
 	return nil
 }

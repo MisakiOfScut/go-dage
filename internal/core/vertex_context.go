@@ -10,7 +10,7 @@ import (
 
 type vertexContext struct {
 	id                       string
-	operator                 *Operator
+	operator                 Operator
 	result                   int
 	remainingDepsNum         atomic.Uint32
 	eval                     eval.EvaluableExpression
@@ -123,7 +123,7 @@ func (v *vertexContext) executeCondProcessor() {
 }
 
 func (v *vertexContext) executeUserProcessor() {
-	if err := v.operator.Processor.OnExecute(v.graphContext.context); err != nil {
+	if err := v.operator.OnExecute(v.graphContext.context); err != nil {
 		v.result = script.VFail
 		log.Debugf("vertex:%s, with operator:%s, execution return err:%v", v.id, v.operator.Name, err)
 	} else {
