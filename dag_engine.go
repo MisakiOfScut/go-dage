@@ -24,11 +24,13 @@ func SetLogger(logger log.Logger) {
 	log.SetLogger(logger)
 }
 
-// Execute a specific graph in a specific graph cluster. You can specify a timeout for the execution,
-// non-positive value will be treated as zero while zero means no timeout
+// Execute a specific graph in a specific graph cluster.
+// 1. You can specify a timeout for the execution,
+// non-positive value will be treated as zero while zero means no timeout.
+// 2. You can pass a done function(nil is allowed) which will be executed after executing dag
 func Execute(userData interface{}, graphClusterName string, graphName string,
-	timeoutMillisecond int64) error {
-	return _globalE.Execute(userData, graphClusterName, graphName, timeoutMillisecond)
+	timeoutMillisecond int64, doneClosure func()) error {
+	return _globalE.Execute(userData, graphClusterName, graphName, timeoutMillisecond, doneClosure)
 }
 
 // BuildAndSetDAG parse the input script and build an executable dag from it,

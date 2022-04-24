@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/MisakiOfScut/go-dage/internal/script"
 	"github.com/MisakiOfScut/go-dage/internal/utils/executor"
+	"github.com/MisakiOfScut/go-dage/internal/utils/log"
 	"go.uber.org/atomic"
 	"time"
 )
@@ -53,14 +54,22 @@ func (gc *graphClusterContext) build(cluster *script.GraphCluster) {
 	}
 }
 
-func (gc *graphClusterContext) execute(context *DAGContext, graphName string, timeoutMillisecond int64) error {
+func (gc *graphClusterContext) execute(context *DAGContext, graphName string, timeoutMillisecond int64,
+	doneClosure func()) error {
 	if _, ok := gc.graphCtxMap[graphName]; !ok {
 		return fmt.Errorf("graph %s is not existed", graphName)
 	}
 	if timeoutMillisecond > 0 {
 		gc.setTimeout(timeoutMillisecond)
 	}
-	gc.graphCtxMap[graphName].execute(context)
+
+	gc.graphCtxMap[graphName].execute(context, func(){
+		gc.endTimeStamp = time.Now().UnixMicro()
+		log.Debugf("graph:%s execution ended with Nanoseconds = %v", graphName, gc.getEndTime())
+		if doneClosure != nil {
+			doneClosure()
+		}
+	})
 
 	return nil
 }
@@ -78,7 +87,8 @@ type graphContext struct {
 	vertexCtxMap      map[string]*vertexContext
 
 	// runtime assign
-	context *DAGContext
+	context     *DAGContext
+	doneClosure func()
 
 	graphClusterCtx *graphClusterContext
 }
@@ -114,8 +124,10 @@ func (g *graphContext) build(graph *script.Graph) {
 	g.name = graph.Name
 }
 
-func (g *graphContext) execute(context *DAGContext) {
+func (g *graphContext) execute(context *DAGContext, doneClosure func()) {
 	g.context = context
+	g.doneClosure = doneClosure
+
 	var readyVertex []*vertexContext
 	for _, vertexCtx := range g.vertexCtxMap {
 		if vertexCtx.isReady() {
@@ -136,7 +148,7 @@ func (g *graphContext) executeReadyVertex(vertexes []*vertexContext) {
 
 func (g *graphContext) onVertexDone(v *vertexContext) {
 	if g.remainingVertexes.Sub(1) == 0 {
-		// TODO: executing a done closure here
+		g.doneClosure()
 		return
 	}
 

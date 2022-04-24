@@ -70,7 +70,7 @@ func TestGraphManager_Build(t *testing.T) {
 
 func TestGraphManager_Execute(t *testing.T) {
 	TestGraphManager_Build(t)
-	if err := gMgr.Execute(nil, graphClusterName, graphName, 0); err != nil {
+	if err := gMgr.Execute(nil, graphClusterName, graphName, 0, nil); err != nil {
 		fmt.Println(err)
 		t.Fail()
 	}

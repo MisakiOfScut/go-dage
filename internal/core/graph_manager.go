@@ -17,12 +17,13 @@ type dagExecutableGraph struct {
 	graphClusterContextPool *sync.Pool
 }
 
-func (g *dagExecutableGraph) execute(context *DAGContext, graphName string, timeoutMillisecond int64) error {
+func (g *dagExecutableGraph) execute(context *DAGContext, graphName string, timeoutMillisecond int64,
+	doneClosure func()) error {
 	gc, ok := g.graphClusterContextPool.Get().(*graphClusterContext)
 	if !ok {
 		log.Panicf("assert from graphClusterContextPool.Get failed")
 	}
-	return gc.execute(context, graphName, timeoutMillisecond)
+	return gc.execute(context, graphName, timeoutMillisecond, doneClosure)
 }
 
 type GraphManager struct {
@@ -61,12 +62,13 @@ func (m *GraphManager) IsOprExisted(oprName string) bool {
 }
 
 func (m *GraphManager) Execute(userData interface{}, graphClusterName string, graphName string,
-	timeoutMillisecond int64) error {
+	timeoutMillisecond int64, doneClosure func()) error {
 	g := m.getDagGraph(graphClusterName)
 	if g == nil {
 		return fmt.Errorf("graphCluster:%s is not existed", graphClusterName)
 	}
-	return g.execute(&DAGContext{dagParams: newDagParams(), UserData: userData}, graphName, timeoutMillisecond)
+	return g.execute(&DAGContext{dagParams: newDagParams(), UserData: userData}, graphName, timeoutMillisecond,
+		doneClosure)
 }
 
 func (m *GraphManager) Build(dagName string, tomlScript *string) error {
@@ -109,7 +111,7 @@ func (m *GraphManager) DumpDAGDot(graphClusterName string) string {
 	return sb.String()
 }
 
-func (m *GraphManager)ReplaceExecutor(executor2 executor.Executor){
+func (m *GraphManager) ReplaceExecutor(executor2 executor.Executor) {
 	m.executor.Stop()
 	m.executor = executor2
 }
