@@ -63,12 +63,10 @@ func (gc *graphClusterContext) execute(context *DAGContext, graphName string, ti
 		gc.setTimeout(timeoutMillisecond)
 	}
 
-	gc.graphCtxMap[graphName].execute(context, func(){
+	gc.graphCtxMap[graphName].execute(context, func() {
 		gc.endTimeStamp = time.Now().UnixMicro()
 		log.Debugf("graph:%s execution ended with Nanoseconds = %v", graphName, gc.getEndTime())
-		if doneClosure != nil {
-			doneClosure()
-		}
+		doneClosure()
 	})
 
 	return nil

@@ -31,14 +31,14 @@ func TestDefaultOperatorManager_RegisterOperator(t *testing.T) {
 			return &tOpr{name: name}
 		})
 		if tOprMgr.GetOperator(name) == nil {
-			t.Fail()
+			t.FailNow()
 		}
 	}
 }
 
 func TestDefaultOperatorManager_GetOperator(t *testing.T) {
 	if tOprMgr.GetOperator("@#$%") != nil {
-		t.Fail()
+		t.FailNow()
 	}
 }
 

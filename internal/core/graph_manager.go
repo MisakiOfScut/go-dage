@@ -18,12 +18,18 @@ type dagExecutableGraph struct {
 }
 
 func (g *dagExecutableGraph) execute(context *DAGContext, graphName string, timeoutMillisecond int64,
-	doneClosure func()) error {
+	usersDoneClosure func()) error {
 	gc, ok := g.graphClusterContextPool.Get().(*graphClusterContext)
 	if !ok {
 		log.Panicf("assert from graphClusterContextPool.Get failed")
 	}
-	return gc.execute(context, graphName, timeoutMillisecond, doneClosure)
+	return gc.execute(context, graphName, timeoutMillisecond, func() {
+		gc.reset()
+		g.graphClusterContextPool.Put(gc)
+		if usersDoneClosure != nil {
+			usersDoneClosure()
+		}
+	})
 }
 
 type GraphManager struct {
@@ -62,13 +68,13 @@ func (m *GraphManager) IsOprExisted(oprName string) bool {
 }
 
 func (m *GraphManager) Execute(userData interface{}, graphClusterName string, graphName string,
-	timeoutMillisecond int64, doneClosure func()) error {
+	timeoutMillisecond int64, usersDoneClosure func()) error {
 	g := m.getDagGraph(graphClusterName)
 	if g == nil {
 		return fmt.Errorf("graphCluster:%s is not existed", graphClusterName)
 	}
 	return g.execute(&DAGContext{dagParams: newDagParams(), UserData: userData}, graphName, timeoutMillisecond,
-		doneClosure)
+		usersDoneClosure)
 }
 
 func (m *GraphManager) Build(dagName string, tomlScript *string) error {

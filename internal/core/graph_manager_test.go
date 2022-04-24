@@ -64,15 +64,46 @@ func TestGraphManager_Build(t *testing.T) {
 	gMgr = NewGraphManager(executor.NewDefaultExecutor(32, 8), tOprMgr)
 	if err := gMgr.Build(graphClusterName, &tomlScript0); err != nil {
 		fmt.Println(err)
-		t.Fail()
+		t.FailNow()
 	}
 }
 
 func TestGraphManager_Execute(t *testing.T) {
 	TestGraphManager_Build(t)
-	if err := gMgr.Execute(nil, graphClusterName, graphName, 0, nil); err != nil {
+	if err := gMgr.Execute(nil, graphClusterName, graphName, 0, func() {
+		fmt.Println("user's done")
+	}); err != nil {
 		fmt.Println(err)
-		t.Fail()
+		t.FailNow()
 	}
 	time.Sleep(1 * time.Millisecond)
+}
+
+func BenchmarkGraphManager_Build(b *testing.B) {
+	t := &testing.T{}
+	TestNewDefaultOperatorManager(t)
+	if t.Failed() {
+		b.FailNow()
+	}
+	gMgr = NewGraphManager(executor.NewDefaultExecutor(32, 8), tOprMgr)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := gMgr.Build(graphClusterName, &tomlScript0); err != nil {
+			fmt.Println(err)
+			b.Fail()
+		}
+	}
+}
+
+func BenchmarkGraphManager_getDagGraph(b *testing.B) {
+	t := &testing.T{}
+	TestNewDefaultOperatorManager(t)
+	if t.Failed() {
+		b.FailNow()
+	}
+	gMgr = NewGraphManager(executor.NewDefaultExecutor(32, 8), tOprMgr)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = gMgr.getDagGraph(graphClusterName)
+	}
 }
