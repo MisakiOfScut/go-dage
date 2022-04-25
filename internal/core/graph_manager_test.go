@@ -102,8 +102,49 @@ func BenchmarkGraphManager_getDagGraph(b *testing.B) {
 		b.FailNow()
 	}
 	gMgr = NewGraphManager(executor.NewDefaultExecutor(32, 8), tOprMgr)
+	if err := gMgr.Build(graphClusterName, &tomlScript0); err != nil {
+		fmt.Println(err)
+		b.Fail()
+	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = gMgr.getDagGraph(graphClusterName)
+	}
+}
+
+// Test single node execution time
+func BenchmarkGraphManager_Execute(b *testing.B) {
+	t := &testing.T{}
+	TestNewDefaultOperatorManager(t)
+	if t.Failed() {
+		b.FailNow()
+	}
+	gMgr = NewGraphManager(executor.NewDefaultExecutor(32, 8), tOprMgr)
+	singleNode := `
+	[[graph]]
+	name = "test_graph_0"
+	
+	[[graph.vertex]]
+	op = "nonOp1"
+	start = true
+	`
+	if err := gMgr.Build(graphClusterName, &singleNode); err != nil {
+		fmt.Println(err)
+		b.Fail()
+	}
+
+	// set global non-op logger
+	log.SetLogger(zap.S())
+	var d = make(chan interface{})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := gMgr.Execute(nil, graphClusterName, graphName, 0, func() {
+			d <- nil
+		}); err != nil {
+			fmt.Println(err)
+			t.FailNow()
+		}
+		_ = <-d
 	}
 }
