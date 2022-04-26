@@ -138,6 +138,7 @@ func (v *vertexContext) onFinish() {
 func (v *vertexContext) reset() {
 	v.result = script.VInit
 	v.remainingDepsNum.Store(uint32(len(v.depsVertexesActualResult)))
+	v.operator = v.operator.Reset()
 	for k, _ := range v.depsVertexesActualResult {
 		v.depsVertexesActualResult[k] = script.VInit
 	}

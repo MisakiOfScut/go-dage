@@ -82,8 +82,9 @@ type DAGContext struct {
 }
 
 type Operator interface {
-	Name() string
-	OnExecute(ctx *DAGContext) error
+	Name() string  // return operator's name
+	OnExecute(ctx *DAGContext) error  // processing
+	Reset() Operator  // if it is able to reset then return itself, otherwise return a new Operator object
 }
 
 type NewOperatorFunction func() Operator
@@ -132,4 +133,8 @@ func (p *DAGEExpressionOperator) Name() string {
 
 func (p *DAGEExpressionOperator) OnExecute(ctx *DAGContext) error {
 	return nil
+}
+
+func (p *DAGEExpressionOperator) Reset() Operator {
+	return p
 }

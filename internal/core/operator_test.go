@@ -24,6 +24,10 @@ func (t *tOpr) OnExecute(ctx *DAGContext) error {
 	return nil
 }
 
+func (t *tOpr) Reset() Operator {
+	return t
+}
+
 // used for benchmark
 type nonOp struct {
 	name string
@@ -34,6 +38,10 @@ func (t *nonOp) Name() string {
 func (t *nonOp) OnExecute(ctx *DAGContext) error {
 	// do nothing
 	return nil
+}
+
+func (t *nonOp) Reset() Operator {
+	return t
 }
 
 func TestDefaultOperatorManager_RegisterOperator(t *testing.T) {
