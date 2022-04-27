@@ -5,6 +5,7 @@ import (
 	"github.com/MisakiOfScut/go-dage/internal/utils/executor"
 	"github.com/MisakiOfScut/go-dage/internal/utils/log"
 	"go.uber.org/zap"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -113,13 +114,9 @@ func BenchmarkGraphManager_getDagGraph(b *testing.B) {
 }
 
 // Test single node execution time
-func BenchmarkGraphManager_Execute(b *testing.B) {
-	t := &testing.T{}
+func TestGraphManager_Execute_Single_Public(t *testing.T) {
 	TestNewDefaultOperatorManager(t)
-	if t.Failed() {
-		b.FailNow()
-	}
-	gMgr = NewGraphManager(executor.NewDefaultExecutor(32, 8), tOprMgr)
+	gMgr = NewGraphManager(executor.NewDefaultExecutor(32, uint(runtime.NumCPU())), tOprMgr)
 	singleNode := `
 	[[graph]]
 	name = "test_graph_0"
@@ -130,21 +127,99 @@ func BenchmarkGraphManager_Execute(b *testing.B) {
 	`
 	if err := gMgr.Build(graphClusterName, &singleNode); err != nil {
 		fmt.Println(err)
-		b.Fail()
+		t.FailNow()
 	}
 
 	// set global non-op logger
 	log.SetLogger(zap.S())
-	var d = make(chan interface{})
+}
+
+func BenchmarkGraphManager_Execute_Single_OneGR(b *testing.B) {
+	t := testing.T{}
+	TestGraphManager_Execute_Single_Public(&t)
+	if t.Failed() {
+		b.FailNow()
+	}
+	var d = make(chan struct{})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		if err := gMgr.Execute(nil, graphClusterName, graphName, 0, func() {
-			d <- nil
+			d <- struct{}{}
 		}); err != nil {
 			fmt.Println(err)
 			t.FailNow()
 		}
 		_ = <-d
 	}
+}
+
+func BenchmarkGraphManager_Execute_Single_MultipleGR(b *testing.B) {
+	t := testing.T{}
+	TestGraphManager_Execute_Single_Public(&t)
+	if t.Failed() {
+		b.FailNow()
+	}
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		var d = make(chan struct{})
+		for pb.Next(){
+			if err := gMgr.Execute(nil, graphClusterName, graphName, 0, func() {
+				d <- struct{}{}
+			}); err != nil {
+				fmt.Println(err)
+				t.FailNow()
+			}
+			_ = <-d
+		}
+	})
+}
+
+func BenchmarkGraphManager_Execute_Single100_MultipleGR(b *testing.B) {
+	t := testing.T{}
+	TestGraphManager_Execute_Single_Public(&t)
+	if t.Failed() {
+		b.FailNow()
+	}
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		var d = make(chan struct{})
+		for pb.Next(){
+			for i := 0; i < 100; i++ {
+				if err := gMgr.Execute(nil, graphClusterName, graphName, 0, func() {
+					d <- struct{}{}
+				}); err != nil {
+					fmt.Println(err)
+					t.FailNow()
+				}
+				_ = <-d
+			}
+		}
+	})
+}
+
+func BenchmarkGraphManager_Execute_Single1000_MultipleGR(b *testing.B) {
+	t := testing.T{}
+	TestGraphManager_Execute_Single_Public(&t)
+	if t.Failed() {
+		b.FailNow()
+	}
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		var d = make(chan struct{})
+		for pb.Next(){
+			for i := 0; i < 1000; i++ {
+				if err := gMgr.Execute(nil, graphClusterName, graphName, 0, func() {
+					d <- struct{}{}
+				}); err != nil {
+					fmt.Println(err)
+					t.FailNow()
+				}
+				_ = <-d
+			}
+		}
+	})
 }
