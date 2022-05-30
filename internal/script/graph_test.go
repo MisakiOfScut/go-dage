@@ -47,7 +47,15 @@ type mockGraphManager struct {
 func (p *mockGraphManager) IsOprExisted(string2 string) bool {
 	return true
 }
-
+func (p *mockGraphManager) GetOperatorInputs(oprName string) []string {
+	return nil
+}
+func (p *mockGraphManager) GetOperatorOutputs(oprName string) []string {
+	return nil
+}
+func (p *mockGraphManager) IsProduction() bool {
+	return false
+}
 func TestDecodeScriptOfProcessDriven(t *testing.T) {
 	gc := NewGraphCluster(&mockGraphManager{})
 	if _, err := toml.Decode(testScriptOfProcessDriven, gc); err != nil {
@@ -77,21 +85,21 @@ name = "test_graph_1"
 [[graph.vertex]]
 op = "opr1"
 start = true
-output = ["opr1_out"]
+output = [{name = "opr1_out", id="m1"}]
 
 [[graph.vertex]]
 op = "opr2"
-input = ["opr1_out"]
-output = ["opr2_out"]
+input = [{name = "opr1_out", id="m1"}]
+output = [{name = "opr2_out", id="m2"}]
 
 [[graph.vertex]]
 op = "opr3"
-input = ["opr1_out"]
-output = ["opr3_out"]
+input = [{name = "opr1_out", id="m1"}]
+output = [{name = "opr3_out", id="m3"}]
 
 [[graph.vertex]]
 op = "opr4"
-input = ["opr2_out", "opr3_out"]
+input = [{name = "opr2_out", id="m2"}, {name = "opr3_out", id="m3"}]
 
 [[graph.vertex]]
 id = "cond1"
@@ -129,7 +137,7 @@ func TestBuildScriptOfDataDriven(t *testing.T) {
 
 	sb := strings.Builder{}
 	gc.DumpGraphClusterDot(&sb)
-	t.Log(sb)
+	t.Log(sb.String())
 }
 
 func TestGraphCluster_DumpGraphClusterDot(t *testing.T) {

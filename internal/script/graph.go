@@ -15,6 +15,9 @@ type GraphCluster struct {
 
 type IGraphManager interface {
 	IsOprExisted(oprName string) bool
+	GetOperatorInputs(oprName string) []string
+	GetOperatorOutputs(oprName string) []string
+	IsProduction() bool
 }
 
 func NewGraphCluster(gMgr IGraphManager) *GraphCluster {
@@ -73,17 +76,17 @@ type Graph struct {
 	Name   string   `toml:"name"`
 	Vertex []Vertex `toml:"vertex"`
 
-	cluster   *GraphCluster
-	vertexMap map[string]*Vertex // map vertex id to *Vertex
-	dataMap   map[string]*Vertex // map data id to *Vertex
+	cluster       *GraphCluster
+	vertexMap     map[string]*Vertex // map vertex id to *Vertex
+	OutputDataMap map[string]*Vertex // map output data id to *Vertex
 }
 
 func (g *Graph) build() error {
 	if g.vertexMap == nil {
 		g.vertexMap = make(map[string]*Vertex)
 	}
-	if g.dataMap == nil {
-		g.dataMap = make(map[string]*Vertex)
+	if g.OutputDataMap == nil {
+		g.OutputDataMap = make(map[string]*Vertex)
 	}
 
 	for i := 0; i < len(g.Vertex); i++ {
@@ -115,20 +118,30 @@ func (g *Graph) build() error {
 func (g *Graph) buildInputOutput() error {
 	for _, v := range g.vertexMap {
 		for i, _ := range v.Output {
-			if t := g.getVertexByDataId(v.Output[i]); t != nil {
-				return fmt.Errorf("[graph:%s] vertex:%s and vertex:%s have a duplicated data:%s in output", v.g.Name,
+			if t := g.getVertexByDataId(v.Output[i].ID); t != nil {
+				return fmt.Errorf("[graph:%s] vertex:%s and vertex:%s have a duplicated data:%v in output", v.g.Name,
 					v.ID,
 					t.ID, v.Output[i])
 			}
-			g.dataMap[v.Output[i]] = v
+			g.OutputDataMap[v.Output[i].ID] = v
 		}
 	}
+	// for _, v := range g.vertexMap {
+	// 	for i, _ := range v.Input {
+	// 		if t := g.getVertexByDataId(v.Input[i].ID); t == nil {
+	// 			return fmt.Errorf("[graph:%s, vertex id:%s] can't find vertex input:%v from other vertexes output",
+	// 				v.g.Name,
+	// 				v.ID, v.Input[i])
+	// 		}
+	// 		g.inputDataMap[v.Input[i].ID] = append(g.inputDataMap[v.Input[i].ID], v)
+	// 	}
+	// }
 
 	return nil
 }
 
 func (g *Graph) getVertexByDataId(dataId string) *Vertex {
-	if val, existed := g.dataMap[dataId]; existed {
+	if val, existed := g.OutputDataMap[dataId]; existed {
 		return val
 	}
 	return nil

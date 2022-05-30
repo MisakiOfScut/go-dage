@@ -10,14 +10,14 @@ import (
 	"sync"
 )
 
-type dagExecutableGraph struct {
+type graphExecutor struct {
 	name          string
 	graphClusters *script.GraphCluster
 	// graphClusterContextPool executor.ConcurrentQueue
 	graphClusterContextPool *sync.Pool
 }
 
-func (g *dagExecutableGraph) execute(context *DAGContext, graphName string, timeoutMillisecond int64,
+func (g *graphExecutor) execute(context *DAGContext, graphName string, timeoutMillisecond int64,
 	usersDoneClosure func()) error {
 	gc, ok := g.graphClusterContextPool.Get().(*graphClusterContext)
 	if !ok {
@@ -33,31 +33,31 @@ func (g *dagExecutableGraph) execute(context *DAGContext, graphName string, time
 }
 
 type GraphManager struct {
-	dagGraphs map[string]*dagExecutableGraph
-	lock      sync.RWMutex
-	executor  executor.Executor
-	oprMgr    OperatorManager
+	graphExecutors map[string]*graphExecutor
+	lock           sync.RWMutex
+	taskExecutor   executor.Executor
+	oprMgr         OperatorManager
 }
 
 func NewGraphManager(executor executor.Executor, oprMgr OperatorManager) *GraphManager {
 	return &GraphManager{
-		dagGraphs: make(map[string]*dagExecutableGraph),
-		lock:      sync.RWMutex{},
-		executor:  executor,
-		oprMgr:    oprMgr,
+		graphExecutors: make(map[string]*graphExecutor),
+		lock:           sync.RWMutex{},
+		taskExecutor:   executor,
+		oprMgr:         oprMgr,
 	}
 }
 
-func (m *GraphManager) setDagGraph(dagGraph *dagExecutableGraph) {
+func (m *GraphManager) setGraphExecutor(ge *graphExecutor) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	m.dagGraphs[dagGraph.name] = dagGraph
+	m.graphExecutors[ge.name] = ge
 }
 
-func (m *GraphManager) getDagGraph(name string) *dagExecutableGraph {
+func (m *GraphManager) getGraphExecutor(name string) *graphExecutor {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
-	if v, ok := m.dagGraphs[name]; ok {
+	if v, ok := m.graphExecutors[name]; ok {
 		return v
 	}
 	return nil
@@ -67,9 +67,21 @@ func (m *GraphManager) IsOprExisted(oprName string) bool {
 	return m.oprMgr.GetOperator(oprName) != nil
 }
 
+func (m *GraphManager) GetOperatorInputs(oprName string) []string {
+	return m.oprMgr.GetOperator(oprName).GetInputsID()
+}
+
+func (m *GraphManager) GetOperatorOutputs(oprName string) []string {
+	return m.oprMgr.GetOperator(oprName).GetOutputsID()
+}
+
+func (m *GraphManager) IsProduction() bool {
+	return true
+}
+
 func (m *GraphManager) Execute(userData interface{}, graphClusterName string, graphName string,
 	timeoutMillisecond int64, usersDoneClosure func()) error {
-	g := m.getDagGraph(graphClusterName)
+	g := m.getGraphExecutor(graphClusterName)
 	if g == nil {
 		return fmt.Errorf("graphCluster:%s is not existed", graphClusterName)
 	}
@@ -77,38 +89,38 @@ func (m *GraphManager) Execute(userData interface{}, graphClusterName string, gr
 		usersDoneClosure)
 }
 
-func (m *GraphManager) Build(dagName string, tomlScript *string) error {
+func (m *GraphManager) Build(clusterName string, tomlScript *string) error {
 	graphCluster := script.NewGraphCluster(m)
 	if _, err := toml.Decode(*tomlScript, graphCluster); err != nil {
-		log.Errorf("decode dag:%s failed, %v", dagName, err)
+		log.Errorf("decode dag:%s failed, %v", clusterName, err)
 		return err
 	}
 
 	if err := graphCluster.Build(); err != nil {
-		log.Errorf("build dag:%s failed, %v", dagName, err)
+		log.Errorf("build dag:%s failed, %v", clusterName, err)
 		return err
 	}
 
-	dagGraph := &dagExecutableGraph{
-		name: dagName, graphClusters: graphCluster, graphClusterContextPool: &sync.Pool{
+	ge := &graphExecutor{
+		name: clusterName, graphClusters: graphCluster, graphClusterContextPool: &sync.Pool{
 			New: func() interface{} {
-				graphClusterCtx := newGraphClusterContext(m.executor, m.oprMgr)
+				graphClusterCtx := newGraphClusterContext(m.taskExecutor, m.oprMgr)
 				graphClusterCtx.build(graphCluster)
 				return graphClusterCtx
 			},
 		},
 	}
-	m.setDagGraph(dagGraph)
+	m.setGraphExecutor(ge)
 
 	return nil
 }
 
 func (m *GraphManager) Stop() {
-	m.executor.Stop()
+	m.taskExecutor.Stop()
 }
 
 func (m *GraphManager) DumpDAGDot(graphClusterName string) string {
-	g := m.getDagGraph(graphClusterName)
+	g := m.getGraphExecutor(graphClusterName)
 	if g == nil {
 		return fmt.Sprintf("graphCluster:%s is not existed", graphClusterName)
 	}
@@ -117,7 +129,7 @@ func (m *GraphManager) DumpDAGDot(graphClusterName string) string {
 	return sb.String()
 }
 
-func (m *GraphManager) ReplaceExecutor(executor2 executor.Executor) {
-	m.executor.Stop()
-	m.executor = executor2
+func (m *GraphManager) ReplaceTaskExecutor(executor2 executor.Executor) {
+	m.taskExecutor.Stop()
+	m.taskExecutor = executor2
 }

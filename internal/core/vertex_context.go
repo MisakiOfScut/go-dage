@@ -18,6 +18,9 @@ type vertexContext struct {
 	depsVertexResult         map[string]int // expected result
 	depsVertexesActualResult []int          // store actual result
 	depsIdx                  map[string]int
+	inputData                []script.Data
+	outputData               []script.Data
+	outputValues             map[string]interface{}
 
 	graphContext *graphContext
 }
@@ -75,6 +78,8 @@ func (v *vertexContext) build(vertex *script.Vertex) {
 	v.id = vertex.ID
 	v.eval = vertex.Eval
 	v.result = script.VInit
+	v.outputData = vertex.Output
+	v.inputData = vertex.Input
 	v.remainingDepsNum.Store(uint32(len(v.depsVertexesActualResult)))
 }
 
@@ -82,7 +87,9 @@ func (v *vertexContext) execute() {
 	defer v.onFinish()
 
 	// graph execute timeout
-	if v.graphContext.getEndTime() != 0 && v.graphContext.getEndTime() <= time.Now().UnixMicro() {
+	if v.graphContext.getEndTime() != 0 && v.graphContext.getEndTime() <= time.Now().UnixMilli() {
+		log.Infof("graph:%s execution had %d ms timeout when executing vertex:%s", v.graphContext.name,
+			time.Now().UnixMilli()-v.graphContext.getEndTime(), v.id)
 		v.result = script.VAll
 		return
 	}
@@ -97,11 +104,41 @@ func (v *vertexContext) execute() {
 		}
 	}
 
+	if !v.injectData() {
+		v.result = script.VFail
+		return
+	}
+
 	if v.eval != nil {
 		v.executeCondProcessor()
 	} else {
 		v.executeUserProcessor()
 	}
+}
+
+func (v *vertexContext) injectData() bool {
+	for i, _ := range v.inputData {
+		if val := v.graphContext.getVertexCtxByData(v.inputData[i].ID).emitData(v.inputData[i].Name); val != nil {
+			if err := v.operator.InjectDepsData(v.inputData[i].Name, val); err != nil {
+				log.Errorf("vertex:%s, with operator:%s, injecting input:%+v failed with err:%v", v.id, v.operator.Name,
+					v.inputData[i], err)
+				return false
+			}
+		} else {
+			log.Errorf("vertex:%s, with operator:%s, missed input:%+v", v.id, v.operator.Name, v.inputData[i])
+			return false
+		}
+	}
+	return true
+}
+
+func (v *vertexContext) emitData(name string) interface{} {
+	val, existed := v.outputValues[name]
+	if !existed {
+		log.Errorf("vertex:%s, with operator:%s, missed output:%s", v.id, v.operator.Name, name)
+		return nil
+	}
+	return val
 }
 
 func (v *vertexContext) executeCondProcessor() {
@@ -123,12 +160,13 @@ func (v *vertexContext) executeCondProcessor() {
 }
 
 func (v *vertexContext) executeUserProcessor() {
-	if err := v.operator.OnExecute(v.graphContext.context); err != nil {
+	var err error
+	if v.outputValues, err = v.operator.OnExecute(v.graphContext.context); err != nil {
 		v.result = script.VFail
-		log.Debugf("vertex:%s, with operator:%s, execution return err:%v", v.id, v.operator.Name, err)
-	} else {
-		v.result = script.VOk
+		log.Errorf("vertex:%s, with operator:%s, execution return err:%v", v.id, v.operator.Name, err)
+		return
 	}
+	v.result = script.VOk
 }
 
 func (v *vertexContext) onFinish() {
@@ -139,6 +177,7 @@ func (v *vertexContext) reset() {
 	v.result = script.VInit
 	v.remainingDepsNum.Store(uint32(len(v.depsVertexesActualResult)))
 	v.operator = v.operator.Reset()
+	v.outputValues = nil
 	for k, _ := range v.depsVertexesActualResult {
 		v.depsVertexesActualResult[k] = script.VInit
 	}

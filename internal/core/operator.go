@@ -82,9 +82,12 @@ type DAGContext struct {
 }
 
 type Operator interface {
-	Name() string  // return operator's name
-	OnExecute(ctx *DAGContext) error  // processing
-	Reset() Operator  // if it is able to reset then return itself, otherwise return a new Operator object
+	Name() string                                              // return operator's name
+	OnExecute(ctx *DAGContext) (map[string]interface{}, error) // processing
+	InjectDepsData(key string, value interface{}) error        // set dependencies' data
+	GetInputsID() []string                                     // get opr input data's ids
+	GetOutputsID() []string                                    // get opr output data's ids
+	Reset() Operator                                           // if it is able to reset then return itself, otherwise return a new Operator object
 }
 
 type NewOperatorFunction func() Operator
@@ -131,10 +134,18 @@ func (p *DAGEExpressionOperator) Name() string {
 	return script.DAGE_EXPR_OPERATOR
 }
 
-func (p *DAGEExpressionOperator) OnExecute(ctx *DAGContext) error {
+func (p *DAGEExpressionOperator) OnExecute(ctx *DAGContext) (map[string]interface{}, error) {
+	return nil, nil
+}
+func (p *DAGEExpressionOperator) InjectDepsData(key string, value interface{}) error {
 	return nil
 }
-
+func (p *DAGEExpressionOperator) GetInputsID() []string {
+	return nil
+}
+func (p *DAGEExpressionOperator) GetOutputsID() []string {
+	return nil
+}
 func (p *DAGEExpressionOperator) Reset() Operator {
 	return p
 }

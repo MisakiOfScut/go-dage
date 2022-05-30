@@ -17,6 +17,11 @@ const (
 	DAGE_EXPR_OPERATOR string = "__DAGE_EXPR_OPERATOR__"
 )
 
+type Data struct {
+	Name string `toml:"name"` // data name
+	ID   string `toml:"id"`   // data id (id equals to name by default)
+}
+
 type Vertex struct {
 	ID       string `toml:"id"`
 	Operator string `toml:"op"`
@@ -31,8 +36,8 @@ type Vertex struct {
 	DepsOnOk   []string `toml:"deps_on_ok"`
 	DepsOnFail []string `toml:"deps_on_fail"`
 
-	Input  []string `toml:"input"`
-	Output []string `toml:"output"`
+	Input  []Data `toml:"input"`
+	Output []Data `toml:"output"`
 
 	NextVertex       map[string]*Vertex
 	DepsVertexResult map[string]int
@@ -49,13 +54,8 @@ func (v *Vertex) verifyAndSetUp() error {
 		return fmt.Errorf("[graph:%s] has an anonymous vertex, there are one or more "+
 			"normal vertexes haven't operator (or one or more condition vertexes haven't ID)", v.g.Name)
 	}
-
-	if v.NextVertex == nil {
-		v.NextVertex = make(map[string]*Vertex)
-	}
-	if v.DepsVertexResult == nil {
-		v.DepsVertexResult = make(map[string]int)
-	}
+	v.NextVertex = make(map[string]*Vertex)
+	v.DepsVertexResult = make(map[string]int)
 
 	// cond vertex
 	if len(v.Operator) == 0 && len(v.Cond) != 0 {
@@ -71,17 +71,50 @@ func (v *Vertex) verifyAndSetUp() error {
 		}
 		v.Eval = expression
 		v.Operator = DAGE_EXPR_OPERATOR
+		return nil
 	}
 
 	// normal vertex
 	if len(v.ID) == 0 {
 		v.ID = v.Operator
 	}
-	if v.g.GetGraphMgr().IsOprExisted(v.Operator) == false {
-		return fmt.Errorf("[graph:%s, vertex id:%s] can't find its operator:%s in operator manager", v.g.Name,
-			v.ID, v.Operator)
+	return v.setUpInputOutput()
+}
+
+func (v *Vertex) setUpInputOutput() error {
+	if !v.g.GetGraphMgr().IsProduction() {
+		return nil
 	}
 
+	if !v.g.GetGraphMgr().IsOprExisted(v.Operator) {
+		return fmt.Errorf("vertex id:%s, can't find its operator:%s in operator manager", v.ID, v.Operator)
+	}
+
+	for _, name := range v.g.GetGraphMgr().GetOperatorInputs(v.Operator) {
+		isMatch := false
+		for i, _ := range v.Input {
+			if v.Input[i].Name == name { // this input has been set by user
+				isMatch = true
+				break
+			}
+		}
+		if !isMatch {
+			v.Input = append(v.Input, Data{Name: name, ID: name})
+		}
+	}
+
+	for _, name := range v.g.GetGraphMgr().GetOperatorOutputs(v.Operator) {
+		isMatch := false
+		for i, _ := range v.Output {
+			if v.Output[i].Name == name { // this output has been set by user
+				isMatch = true
+				break
+			}
+		}
+		if !isMatch {
+			v.Output = append(v.Output, Data{Name: name, ID: name})
+		}
+	}
 	return nil
 }
 
@@ -101,7 +134,7 @@ func (v *Vertex) depend(pre *Vertex, expectedResult int) {
 func (v *Vertex) build() error {
 	// build vertex's dependencies from data dependencies
 	for i, _ := range v.Input {
-		preVertex := v.g.getVertexByDataId(v.Input[i])
+		preVertex := v.g.getVertexByDataId(v.Input[i].ID)
 		if preVertex == nil {
 			return fmt.Errorf("[graph:%s, vertex id:%s] can't find vertex input:%s from other vertexes output",
 				v.g.Name,

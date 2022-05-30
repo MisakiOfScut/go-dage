@@ -36,8 +36,8 @@ func Execute(userData interface{}, graphClusterName string, graphName string,
 // BuildAndSetDAG parse the input script and build an executable dag from it,
 // and this function only returns build error.
 // If you set a dag with a duplicated name, the previous one will be replaced.
-func BuildAndSetDAG(dagName string, tomlScript *string) error {
-	return _globalE.Build(dagName, tomlScript)
+func BuildAndSetDAG(clusterName string, tomlScript *string) error {
+	return _globalE.Build(clusterName, tomlScript)
 }
 
 // Stop the engine when your app ends. The engine will be stopped after execute the remaining tasks in the executor's
@@ -65,7 +65,7 @@ func TestBuildDAG(tomlScript *string, mockGraphMgr script.IGraphManager) error {
 // The default executor is created with 32 queueLength and 8 concurrentLevel.
 // You can call this function before executing graphs.
 func ReplaceExecutor(executor executor.Executor) {
-	_globalE.ReplaceExecutor(executor)
+	_globalE.ReplaceTaskExecutor(executor)
 }
 
 // RegisterOperator add an operator object new function to engine.

@@ -34,7 +34,7 @@ func (gc *graphClusterContext) getOprMgr() OperatorManager {
 }
 
 func (gc *graphClusterContext) setTimeout(millisecond int64) {
-	gc.endTimeStamp = millisecond*1000 + time.Now().UnixMicro()
+	gc.endTimeStamp = millisecond + time.Now().UnixMilli()
 }
 
 func (gc *graphClusterContext) getEndTime() int64 {
@@ -64,8 +64,7 @@ func (gc *graphClusterContext) execute(context *DAGContext, graphName string, ti
 	}
 
 	gc.graphCtxMap[graphName].execute(context, func() {
-		gc.endTimeStamp = time.Now().UnixMicro()
-		log.Debugf("graph:%s execution ended with Nanoseconds = %v", graphName, gc.getEndTime())
+		log.Debugf("%s execution ended in %s", graphName, time.Now().String())
 		doneClosure()
 	})
 
@@ -83,6 +82,7 @@ type graphContext struct {
 	name              string
 	remainingVertexes atomic.Uint32
 	vertexCtxMap      map[string]*vertexContext
+	outputDataMap     map[string]*vertexContext
 
 	// runtime assign
 	context     *DAGContext
@@ -92,7 +92,11 @@ type graphContext struct {
 }
 
 func newGraphContext(ctx *graphClusterContext) *graphContext {
-	return &graphContext{graphClusterCtx: ctx, vertexCtxMap: make(map[string]*vertexContext)}
+	return &graphContext{
+		graphClusterCtx: ctx,
+		vertexCtxMap:    make(map[string]*vertexContext),
+		outputDataMap:   make(map[string]*vertexContext),
+	}
 }
 
 func (g *graphContext) getEndTime() int64 {
@@ -107,13 +111,16 @@ func (g *graphContext) getVertexCtx(id string) *vertexContext {
 	return g.vertexCtxMap[id]
 }
 
-func (g *graphContext) addVertexCtx(id string, v *vertexContext) {
-	g.vertexCtxMap[id] = v
+func (g *graphContext) getVertexCtxByData(dataID string) *vertexContext {
+	return g.outputDataMap[dataID]
 }
 
 func (g *graphContext) build(graph *script.Graph) {
 	for i, _ := range graph.Vertex {
-		g.addVertexCtx(graph.Vertex[i].ID, newVertexContext(g))
+		g.vertexCtxMap[graph.Vertex[i].ID] = newVertexContext(g)
+	}
+	for id, vertex := range graph.OutputDataMap {
+		g.outputDataMap[id] = g.getVertexCtx(vertex.ID)
 	}
 	for id, vertexContext := range g.vertexCtxMap {
 		vertexContext.build(graph.GetVertexByID(id))
