@@ -32,27 +32,28 @@ op = "opr5"
 op = "opr6"
 
 
+
 [[graph]]
 name = "test_graph_1"
 
 [[graph.vertex]]
 op = "opr1"
 start = true
-output = ["opr1_out"]
+output = [{name = "opr1_out", id="m1"}]
 
 [[graph.vertex]]
 op = "opr2"
-input = ["opr1_out"]
-output = ["opr2_out"]
+input = [{name = "opr1_out", id="m1"}]
+output = [{name = "opr2_out", id="m2"}]
 
 [[graph.vertex]]
 op = "opr3"
-input = ["opr1_out"]
-output = ["opr3_out"]
+input = [{name = "opr1_out", id="m1"}]
+output = [{name = "opr3_out", id="m3"}]
 
 [[graph.vertex]]
 op = "opr4"
-input = ["opr2_out", "opr3_out"]
+input = [{name = "opr2_out", id="m2"}, {name = "opr3_out", id="m3"}]
 
 [[graph.vertex]]
 id = "cond1"

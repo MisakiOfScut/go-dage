@@ -3,12 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/MisakiOfScut/go-dage/internal/script"
+	"github.com/MisakiOfScut/go-dage"
 	"io/ioutil"
 	"os/exec"
 	"path"
-	"strings"
 )
 
 type mockGraphManager struct {
@@ -28,21 +26,21 @@ func main() {
 		return
 	}
 
-	gc := script.NewGraphCluster(&mockGraphManager{})
-	if _, err := toml.DecodeFile(*scriptPath, gc); err != nil {
+	bytes, err := ioutil.ReadFile(*scriptPath)
+	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	if err := gc.Build(); err != nil {
-		fmt.Println(err)
-		return
-	}
-	sb := strings.Builder{}
-	gc.DumpGraphClusterDot(&sb)
+	tomlScript := string(bytes)
 
-	dot := sb.String()
+	dot, err := dage.TestBuildDAG(&tomlScript)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	dotFile := path.Base(*scriptPath) + ".dot"
-	err := ioutil.WriteFile(dotFile, []byte(dot), 0755)
+	err = ioutil.WriteFile(dotFile, []byte(dot), 0755)
 	if nil != err {
 		fmt.Println(err)
 		return

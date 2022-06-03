@@ -6,6 +6,7 @@ import (
 	"github.com/MisakiOfScut/go-dage/internal/script"
 	"github.com/MisakiOfScut/go-dage/internal/utils/executor"
 	"github.com/MisakiOfScut/go-dage/internal/utils/log"
+	"strings"
 )
 
 var (
@@ -50,17 +51,6 @@ func DumpDAGDot(graphClusterName string) string {
 	return _globalE.DumpDAGDot(graphClusterName)
 }
 
-func TestBuildDAG(tomlScript *string, mockGraphMgr script.IGraphManager) error {
-	graphCluster := script.NewGraphCluster(mockGraphMgr)
-	if _, err := toml.Decode(*tomlScript, graphCluster); err != nil {
-		return err
-	}
-	if err := graphCluster.Build(); err != nil {
-		return err
-	}
-	return nil
-}
-
 // ReplaceExecutor replace the executor of the engine.
 // The default executor is created with 32 queueLength and 8 concurrentLevel.
 // You can call this function before executing graphs.
@@ -72,4 +62,34 @@ func ReplaceExecutor(executor executor.Executor) {
 // Attention: add a function with duplicated name will replace the previous one;
 func RegisterOperator(oprName string, fun core.NewOperatorFunction) {
 	_globalOprMgr.RegisterOperator(oprName, fun)
+}
+
+type mockGraphManager struct {
+}
+
+func (p *mockGraphManager) IsOprExisted(string2 string) bool {
+	return true
+}
+func (p *mockGraphManager) GetOperatorInputs(oprName string) []string {
+	return nil
+}
+func (p *mockGraphManager) GetOperatorOutputs(oprName string) []string {
+	return nil
+}
+func (p *mockGraphManager) IsProduction() bool {
+	return false
+}
+
+func TestBuildDAG(tomlScript *string) (string, error) {
+	graphCluster := script.NewGraphCluster(&mockGraphManager{})
+	if _, err := toml.Decode(*tomlScript, graphCluster); err != nil {
+		return "", err
+	}
+	if err := graphCluster.Build(); err != nil {
+		return "", err
+	}
+
+	sb := strings.Builder{}
+	graphCluster.DumpGraphClusterDot(&sb)
+	return sb.String(), nil
 }
